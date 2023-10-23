@@ -1,0 +1,1035 @@
+/*
+
+// 20:54:56 ---- Random IPFS NFT
+
+/**
+ * @title Random IPFS NFT
+ * @author Momodu Abdulbatin Jamiu
+ * @notice When we mint an NFT, we will trigger a chainlink VRF call to get us a random number
+ * using that number, we will get a random NFT
+ * Pug, Shiba Inu, St. Bernard
+ * Pug super rare
+ * Shiba Inu sort of common
+ * St. Bernard common
+ *
+ * users have to pay to mint an NFT
+ * the owner of the contract can wthdraw the ETH
+ */
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.7;
+
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+
+contract RandomIpfsNft is VRFConsumerBaseV2 {
+    // Chainlink VRF Variables
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    uint64 private immutable i_subscriptionId;
+    bytes32 private immutable i_gasLane;
+    uint32 private immutable i_callbackGasLimit;
+    uint16 private constant REQUEST_CONFIRMATIONS = 3;
+    uint32 private constant NUM_WORDS = 1;
+
+    constructor(
+        address vrfCoordinatorV2,
+        uint64 subscriptionId,
+        bytes32 gasLane,
+        uint32 callbackGasLimit
+    ) VRFConsumerBaseV2(vrfCoordinatorV2) {
+        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
+        i_subscriptionId = subscriptionId;
+        i_gasLane = gasLane;
+        i_callbackGasLimit = callbackGasLimit;
+    }
+
+    // The function will be called when a user want to request for NFT
+    function requestNft() public returns (uint256 requestId) {
+        // Here we requested for the random NFT
+        requestId = i_vrfCoordinator.requestRandomWords(
+            i_gasLane,
+            i_subscriptionId,
+            REQUEST_CONFIRMATIONS,
+            i_callbackGasLimit,
+            NUM_WORDS
+        );
+
+    }
+
+    // The function will be called to request for randomness
+    function fulfillRamdomWords(
+        uint256 requestId,
+        uint256[] memory randomWords
+    ) internal override {}
+
+    function tokenURI(uint256) public {}
+}
+
+*/
+
+/*
+
+// 21:03:20 ---- Random IPFS NFT part II
+
+/**
+ * @notice Mapping Chainlink VRF Requests
+ * @dev Mapping Chainlink VRF Requests
+ * We want to create a mapping of people who call the chainlink VRF to the requestId
+ * The reason for this is that when we request for randomness, it kicks off two transactions which is 
+ * the requestRandomWords and fulfillRandomWords
+ * so in the fulfillRandomWords the chainlink node will call for the requestId which we dont want that
+ * i.e we dont want the node to be the owner of the NFT that we mint
+ * here is what we are talking about
+ * function fulfillRamdomWords(
+ *      uint256 requestId,
+ *       uint256[] memory randomWords
+ *   ) internal override {
+ *       _safeMint(msg.sender, s_tokenCounter);
+ *  }
+
+ * So the solution is to create a mapping of people who call the chainlink VRF to the requestId
+ */
+
+/**
+ * @title Random IPFS NFT
+ * @author Momodu Abdulbatin Jamiu
+ * @notice When we mint an NFT, we will trigger a chainlink VRF call to get us a random number
+ * using that number, we will get a random NFT
+ * Pug, Shiba Inu, St. Bernard
+ * Pug super rare
+ * Shiba Inu sort of common
+ * St. Bernard common
+ *
+ * users have to pay to mint an NFT
+ * the owner of the contract can wthdraw the ETH
+ */
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.7;
+
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+
+contract RandomIpfsNft is VRFConsumerBaseV2, ERC721 {
+    // Chainlink VRF Variables
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    uint64 private immutable i_subscriptionId;
+    bytes32 private immutable i_gasLane;
+    uint32 private immutable i_callbackGasLimit;
+    uint16 private constant REQUEST_CONFIRMATIONS = 3;
+    uint32 private constant NUM_WORDS = 1;
+
+    // VRF helpers
+    mapping(uint256 => address) public s_requestIdToSender;
+
+    // NFT Variable
+    uint256 public s_tokenCounter; // we created our tokenId
+
+    constructor(
+        address vrfCoordinatorV2,
+        uint64 subscriptionId,
+        bytes32 gasLane,
+        uint32 callbackGasLimit
+    ) VRFConsumerBaseV2(vrfCoordinatorV2) ERC721("Random IPFT NFT", "RIN") {
+        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
+        i_subscriptionId = subscriptionId;
+        i_gasLane = gasLane;
+        i_callbackGasLimit = callbackGasLimit;
+    }
+
+    // The function will be called when a user want to request for NFT
+    function requestNft() public returns (uint256 requestId) {
+        // Here we requested for the random NFT
+        requestId = i_vrfCoordinator.requestRandomWords(
+            i_gasLane,
+            i_subscriptionId,
+            REQUEST_CONFIRMATIONS,
+            i_callbackGasLimit,
+            NUM_WORDS
+        );
+        // Here we mapped the requestId to sender i.e who called the randomness
+        s_requestIdToSender[requestId] = msg.sender;
+    }
+
+    // The function will be called to request for randomness
+    function fulfillRamdomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+        // Now is not the chainlink node who will own the dog, is whoever request for it
+        address dogOwner = s_requestIdToSender[requestId]; // we have the dog owner
+        uint256 newTokenId = s_tokenCounter; // we have the tokenId
+        _safeMint(dogOwner, newTokenId); // we mint our NFT
+    }
+
+    function tokenURI(uint256) public view override returns (string memory) {}
+}
+
+
+*/
+
+/*
+
+// 21:07:39 ---- Random IPFS NFT part III
+
+/**
+ * @notice Creating Rare NFTS
+ * @dev Now we want to make the dogs different rare
+ * So how do we create this dogs with rarety.
+ *
+ * What we could do is that, wecan create a chance array, an array that shows
+ * the chances of the different dogs.
+ */
+
+/**
+ * @title Random IPFS NFT
+ * @author Momodu Abdulbatin Jamiu
+ * @notice When we mint an NFT, we will trigger a chainlink VRF call to get us a random number
+ * using that number, we will get a random NFT
+ * Pug, Shiba Inu, St. Bernard
+ * Pug super rare
+ * Shiba Inu sort of common
+ * St. Bernard common
+ *
+ * users have to pay to mint an NFT
+ * the owner of the contract can wthdraw the ETH
+ */
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.7;
+
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+
+error RandomIpfsNft__RangeOutOfBounds();
+
+contract RandomIpfsNft is VRFConsumerBaseV2, ERC721 {
+
+    // Type Declaration
+    enum Breed {
+        PUG,
+        SHIBA_INU,
+        ST_BERNARD
+    }
+
+    // Chainlink VRF Variables
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    uint64 private immutable i_subscriptionId;
+    bytes32 private immutable i_gasLane;
+    uint32 private immutable i_callbackGasLimit;
+    uint16 private constant REQUEST_CONFIRMATIONS = 3;
+    uint32 private constant NUM_WORDS = 1;
+
+    // VRF helpers
+    mapping(uint256 => address) public s_requestIdToSender;
+
+    // NFT Variable
+    uint256 public s_tokenCounter; // we created our tokenId
+    uint256 internal constant MAX_CHANCE_VALUE = 100; // a chance array of max value 100
+
+    constructor(
+        address vrfCoordinatorV2,
+        uint64 subscriptionId,
+        bytes32 gasLane,
+        uint32 callbackGasLimit
+    ) VRFConsumerBaseV2(vrfCoordinatorV2) ERC721("Random IPFT NFT", "RIN") {
+        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
+        i_subscriptionId = subscriptionId;
+        i_gasLane = gasLane;
+        i_callbackGasLimit = callbackGasLimit;
+    }
+
+    // The function will be called when a user want to request for NFT
+    function requestNft() public returns (uint256 requestId) {
+        // Here we requested for the random NFT
+        requestId = i_vrfCoordinator.requestRandomWords(
+            i_gasLane,
+            i_subscriptionId,
+            REQUEST_CONFIRMATIONS,
+            i_callbackGasLimit,
+            NUM_WORDS
+        );
+        // Here we mapped the requestId to sender i.e who called the randomness
+        s_requestIdToSender[requestId] = msg.sender;
+    }
+
+    // The function will be called to request for randomness
+    function fulfillRamdomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+        // Now is not the chainlink node who will own the dog, is whoever request for it
+        address dogOwner = s_requestIdToSender[requestId]; // we have the dog owner
+        uint256 newTokenId = s_tokenCounter; // we have the tokenId
+
+        uint256 moddedRng = randomWords[0] % MAX_CHANCE_VALUE; // we will have numbers from 0 - 99
+        // 7 - Pug
+        // 12 - Shiba Inu
+        // 88 - St. Bernard
+        // 45 -> St. Bernard
+
+        Breed dogBreed = getBreedFromModdedRng(moddedRng);
+        _safeMint(dogOwner, newTokenId); // we mint our NFT
+    }
+
+    // This function will get us the breed from the moddedRng
+    function getBreedFromModdedRng(uint256 moddedRng) public pure returns (Breed) {
+        uint256 cummulativeSum = 0;
+        uint256[3] memory chanceArray = getChanceArray();
+        /**
+         * @dev how the loop works is this 
+         * if moddedRng = 25, i.e Shiba Inu bcos is between [10, 30]
+         * and i = 0, chanceArray.length = 99, cummulativeSum = 0, chanceArray[i] = 10
+         * 25 >= 0 true && 25 < 0 + 10 not true
+         * Then this line of code next --> cummulativeSum += chanceArray[i];
+         * So --> cummulativeSum += chanceArray[i] will now be 10
+         * 
+         * Now let start the loop again
+         * if again moddedRng = 25, i.e Shiba Inu bcos is between [10, 30]
+         * i = 1, chanceArray.length = 99, cummulativeSum = 10, chanceArray[i] = 30
+         * 25 >= 10 true && 25 < 10 + 30 true
+         * then return Breed(i) = Shiba Inu Bingo!!!
+         * 
+         * and this line of code i.e cummulativeSum += chanceArray[i] dont need again
+         */
+        for (uint256 i = 0; i < chanceArray.length; i++) {
+            if (moddedRng >= cummulativeSum && moddedRng < cummulativeSum + chanceArray[i]) {
+                return Breed(i);
+            }
+            cummulativeSum += chanceArray[i];
+        }
+        // In case if its dosn't return anything or an error occured
+        revert RandomIpfsNft__RangeOutOfBounds();
+    }
+
+    /**
+     * @dev The chance array represent different rarety of different dogs
+     * so by making this array, we are saying that index 0 i.e 10 has 10% chance of happening
+     * index 1 has 20% chance of happeneing while index 2 has 60% chance of happening
+     * 10 + 30 - 100 
+     * 
+     * So we are saying that Pug will have 10%
+     * Shiba Inu will have 30% chance
+     * St. Bernard will have 60% chance
+     * 
+     */
+    function getChanceArray() public pure returns (uint256[3] memory) {
+        return [10, 30, MAX_CHANCE_VALUE];
+    }
+
+    function tokenURI(uint256) public view override returns (string memory) {}
+}
+
+
+*/
+
+/*
+
+// 21:15:18 ---- Random IPFS NFT part IV
+
+/**
+ * @notice Setting the NFT Image
+ * @dev Now we want to use an extension from Openzepplin called ERC721URIStorage.sol
+ * and it comes with a function called  _setTokenURI() and we can just call it and it will
+ * automatically update that tokenURI() to what we set it as
+ * 
+ * Note: _setTokenURI isn't the most gas efficient operation.abi
+ * we are using it bcos it does have the most customization
+ */
+
+/**
+ * @title Random IPFS NFT
+ * @author Momodu Abdulbatin Jamiu
+ * @notice When we mint an NFT, we will trigger a chainlink VRF call to get us a random number
+ * using that number, we will get a random NFT
+ * Pug, Shiba Inu, St. Bernard
+ * Pug super rare
+ * Shiba Inu sort of common
+ * St. Bernard common
+ *
+ * users have to pay to mint an NFT
+ * the owner of the contract can wthdraw the ETH
+ */
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.7;
+
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+
+// import "@openzeppelin/contracts/token/ERC721/ERC721.sol"; we dont need this again
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+
+error RandomIpfsNft__RangeOutOfBounds();
+
+contract RandomIpfsNft is VRFConsumerBaseV2, ERC721URIStorage {
+
+    // Type Declaration
+    enum Breed {
+        PUG,
+        SHIBA_INU,
+        ST_BERNARD
+    }
+
+    // Chainlink VRF Variables
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    uint64 private immutable i_subscriptionId;
+    bytes32 private immutable i_gasLane;
+    uint32 private immutable i_callbackGasLimit;
+    uint16 private constant REQUEST_CONFIRMATIONS = 3;
+    uint32 private constant NUM_WORDS = 1;
+
+    // VRF helpers
+    mapping(uint256 => address) public s_requestIdToSender;
+
+    // NFT Variable
+    uint256 public s_tokenCounter; // we created our tokenId
+    uint256 internal constant MAX_CHANCE_VALUE = 100; // a chance array of max value 100
+
+    string[] internal s_dogTokenUris; // we created a string array that will store different token uri of the dog breed
+
+    constructor(
+        address vrfCoordinatorV2,
+        uint64 subscriptionId,
+        bytes32 gasLane,
+        uint32 callbackGasLimit,
+
+        string[3] memory dogTokenUris
+    ) VRFConsumerBaseV2(vrfCoordinatorV2) ERC721("Random IPFT NFT", "RIN") {
+        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
+        i_subscriptionId = subscriptionId;
+        i_gasLane = gasLane;
+        i_callbackGasLimit = callbackGasLimit;
+
+        s_dogTokenUris = dogTokenUris; // we set the dog token uris
+    }
+
+    // The function will be called when a user want to request for NFT
+    function requestNft() public returns (uint256 requestId) {
+        // Here we requested for the random NFT
+        requestId = i_vrfCoordinator.requestRandomWords(
+            i_gasLane,
+            i_subscriptionId,
+            REQUEST_CONFIRMATIONS,
+            i_callbackGasLimit,
+            NUM_WORDS
+        );
+        // Here we mapped the requestId to sender i.e who called the randomness
+        s_requestIdToSender[requestId] = msg.sender;
+    }
+
+    // The function will be called to request for randomness
+    function fulfillRamdomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+        // Now is not the chainlink node who will own the dog, is whoever request for it
+        address dogOwner = s_requestIdToSender[requestId]; // we have the dog owner
+        uint256 newTokenId = s_tokenCounter; // we have the tokenId
+
+        uint256 moddedRng = randomWords[0] % MAX_CHANCE_VALUE; // we will have numbers from 0 - 99
+        // 7 - Pug
+        // 12 - Shiba Inu
+        // 88 - St. Bernard
+        // 45 -> St. Bernard
+
+        Breed dogBreed = getBreedFromModdedRng(moddedRng);
+        _safeMint(dogOwner, newTokenId); // we mint our NFT
+
+        // we call _setTokenURI() from ERC721URIStorage.sol
+        // this is an example of token uri --> "ipfs://bafybeig37ioir76s7mg5oobetncojcm3c3hxasyd4rvid4jqhy4gkaheg4/?filename=0-PUG.json";
+        // so we would have different uri for diffrent dog breed
+        _setTokenURI(newTokenId, s_dogTokenUris[uint256(dogBreed)]); // we cast the dogBreed to uint256 to get its index
+    }
+
+    // This function will get us the breed from the moddedRng
+    function getBreedFromModdedRng(uint256 moddedRng) public pure returns (Breed) {
+        uint256 cummulativeSum = 0;
+        uint256[3] memory chanceArray = getChanceArray();
+        /**
+         * @dev how the loop works is this 
+         * if moddedRng = 25, i.e Shiba Inu bcos is between [10, 30]
+         * and i = 0, chanceArray.length = 99, cummulativeSum = 0, chanceArray[i] = 10
+         * 25 >= 0 true && 25 < 0 + 10 not true
+         * Then this line of code next --> cummulativeSum += chanceArray[i];
+         * So --> cummulativeSum += chanceArray[i] will now be 10
+         * 
+         * Now let start the loop again
+         * if again moddedRng = 25, i.e Shiba Inu bcos is between [10, 30]
+         * i = 1, chanceArray.length = 99, cummulativeSum = 10, chanceArray[i] = 30
+         * 25 >= 10 true && 25 < 10 + 30 true
+         * then return Breed(i) = Shiba Inu Bingo!!!
+         * 
+         * and this line of code i.e cummulativeSum += chanceArray[i] dont need again
+         */
+        for (uint256 i = 0; i < chanceArray.length; i++) {
+            if (moddedRng >= cummulativeSum && moddedRng < cummulativeSum + chanceArray[i]) {
+                return Breed(i);
+            }
+            cummulativeSum += chanceArray[i];
+        }
+        // In case if its dosn't return anything or an error occured
+        revert RandomIpfsNft__RangeOutOfBounds();
+    }
+
+    /**
+     * @dev The chance array represent different rarety of different dogs
+     * so by making this array, we are saying that index 0 i.e 10 has 10% chance of happening
+     * index 1 has 20% chance of happeneing while index 2 has 60% chance of happening
+     * 10 + 30 - 100 
+     * 
+     * So we are saying that Pug will have 10%
+     * Shiba Inu will have 30% chance
+     * St. Bernard will have 60% chance
+     * 
+     */
+    function getChanceArray() public pure returns (uint256[3] memory) {
+        return [10, 30, MAX_CHANCE_VALUE];
+    }
+
+    function tokenURI(uint256) public view override returns (string memory) {}
+}
+
+
+*/
+
+/*
+
+// 21:19:02 ---- Random IPFS NFT part V
+
+/**
+ * @notice Setting an NFT Mint Price
+ * @dev Now we want to set the users to pay to mint an NFT also 
+ * the owner of the contract can wthdraw the ETH
+ */
+
+/**
+ * @title Random IPFS NFT
+ * @author Momodu Abdulbatin Jamiu
+ * @notice When we mint an NFT, we will trigger a chainlink VRF call to get us a random number
+ * using that number, we will get a random NFT
+ * Pug, Shiba Inu, St. Bernard
+ * Pug super rare
+ * Shiba Inu sort of common
+ * St. Bernard common
+ *
+ * users have to pay to mint an NFT
+ * the owner of the contract can wthdraw the ETH
+ */
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.7;
+
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+
+// import "@openzeppelin/contracts/token/ERC721/ERC721.sol"; we dont need this again
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+error RandomIpfsNft__RangeOutOfBounds();
+error RandomIpfsNft__NeedMoreETHSent();
+error RandomIpfsNft__TransferFailed();
+
+contract RandomIpfsNft is VRFConsumerBaseV2, ERC721URIStorage, Ownable {
+
+    // Type Declaration
+    enum Breed {
+        PUG,
+        SHIBA_INU,
+        ST_BERNARD
+    }
+
+    // Chainlink VRF Variables
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    uint64 private immutable i_subscriptionId;
+    bytes32 private immutable i_gasLane;
+    uint32 private immutable i_callbackGasLimit;
+    uint16 private constant REQUEST_CONFIRMATIONS = 3;
+    uint32 private constant NUM_WORDS = 1;
+
+    // VRF helpers
+    mapping(uint256 => address) public s_requestIdToSender;
+
+    // NFT Variable
+    uint256 public s_tokenCounter; // we created our tokenId
+    uint256 internal constant MAX_CHANCE_VALUE = 100; // a chance array of max value 100
+    string[] internal s_dogTokenUris; // we created a string array that will store different token uri of the dog breed
+
+    uint256 internal immutable i_mintFee; // a variable to store the mint fees
+
+    // Events
+    event NftRequested(uint256 indexed requestId, address requester);
+    event NftMinted(Breed dogBreed, address minter);
+
+    constructor(
+        address vrfCoordinatorV2,
+        uint64 subscriptionId,
+        bytes32 gasLane,
+        uint32 callbackGasLimit,
+        string[3] memory dogTokenUris,
+
+        uint256 mintFee
+    ) VRFConsumerBaseV2(vrfCoordinatorV2) ERC721("Random IPFT NFT", "RIN") {
+        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
+        i_subscriptionId = subscriptionId;
+        i_gasLane = gasLane;
+        i_callbackGasLimit = callbackGasLimit;
+        s_dogTokenUris = dogTokenUris; // we set the dog token uris
+
+        i_mintFee = mintFee; // we set the mint fee
+    }
+
+    // The function will be called when a user want to request for NFT and the user will pay for the mint
+    function requestNft() public payable returns (uint256 requestId) {
+        if (msg.value < i_mintFee) {
+            revert RandomIpfsNft__NeedMoreETHSent();
+        }
+        // Here we requested for the random NFT
+        requestId = i_vrfCoordinator.requestRandomWords(
+            i_gasLane,
+            i_subscriptionId,
+            REQUEST_CONFIRMATIONS,
+            i_callbackGasLimit,
+            NUM_WORDS
+        );
+        // Here we mapped the requestId to sender i.e who called the randomness
+        s_requestIdToSender[requestId] = msg.sender;
+
+        emit NftRequested(requestId, msg.sender);
+    }
+
+    // The function will be called to request for randomness
+    function fulfillRamdomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+        // Now is not the chainlink node who will own the dog, is whoever request for it
+        address dogOwner = s_requestIdToSender[requestId]; // we have the dog owner
+        uint256 newTokenId = s_tokenCounter; // we have the tokenId
+
+        uint256 moddedRng = randomWords[0] % MAX_CHANCE_VALUE; // we will have numbers from 0 - 99
+        // 7 - Pug
+        // 12 - Shiba Inu
+        // 88 - St. Bernard
+        // 45 -> St. Bernard
+
+        Breed dogBreed = getBreedFromModdedRng(moddedRng);
+        _safeMint(dogOwner, newTokenId); // we mint our NFT
+
+        // we call _setTokenURI() from ERC721URIStorage.sol
+        // this is an example of token uri --> "ipfs://bafybeig37ioir76s7mg5oobetncojcm3c3hxasyd4rvid4jqhy4gkaheg4/?filename=0-PUG.json";
+        // so we would have different uri for diffrent dog breed
+        _setTokenURI(newTokenId, s_dogTokenUris[uint256(dogBreed)]); // we cast the dogBreed to uint256 to get its index
+    
+        emit NftMinted(dogBreed, dogOwner);
+    }
+
+    // This is a function to allow the user who mint the NFT to be able to withdraw the ETH
+    // we can create our modifier function
+    // but openzepplin comes with a contract called Ownable.sol that has a modifier
+    function withdraw() public onlyOwner{
+        uint256 amount = address(this).balance;
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        if (!success) {
+            revert RandomIpfsNft__TransferFailed();
+        }
+    }
+
+    // This function will get us the breed from the moddedRng
+    function getBreedFromModdedRng(uint256 moddedRng) public pure returns (Breed) {
+        uint256 cummulativeSum = 0;
+        uint256[3] memory chanceArray = getChanceArray();
+        /**
+         * @dev how the loop works is this 
+         * if moddedRng = 25, i.e Shiba Inu bcos is between [10, 30]
+         * and i = 0, chanceArray.length = 99, cummulativeSum = 0, chanceArray[i] = 10
+         * 25 >= 0 true && 25 < 0 + 10 not true
+         * Then this line of code next --> cummulativeSum += chanceArray[i];
+         * So --> cummulativeSum += chanceArray[i] will now be 10
+         * 
+         * Now let start the loop again
+         * if again moddedRng = 25, i.e Shiba Inu bcos is between [10, 30]
+         * i = 1, chanceArray.length = 99, cummulativeSum = 10, chanceArray[i] = 30
+         * 25 >= 10 true && 25 < 10 + 30 true
+         * then return Breed(i) = Shiba Inu Bingo!!!
+         * 
+         * and this line of code i.e cummulativeSum += chanceArray[i] dont need again
+         */
+        for (uint256 i = 0; i < chanceArray.length; i++) {
+            if (moddedRng >= cummulativeSum && moddedRng < cummulativeSum + chanceArray[i]) {
+                return Breed(i);
+            }
+            cummulativeSum += chanceArray[i];
+        }
+        // In case if its dosn't return anything or an error occured
+        revert RandomIpfsNft__RangeOutOfBounds();
+    }
+
+    /**
+     * @dev The chance array represent different rarety of different dogs
+     * so by making this array, we are saying that index 0 i.e 10 has 10% chance of happening
+     * index 1 has 20% chance of happeneing while index 2 has 60% chance of happening
+     * 10 + 30 - 100 
+     * 
+     * So we are saying that Pug will have 10%
+     * Shiba Inu will have 30% chance
+     * St. Bernard will have 60% chance
+     * 
+     */
+    function getChanceArray() public pure returns (uint256[3] memory) {
+        return [10, 30, MAX_CHANCE_VALUE];
+    }
+
+    function getMintFee() public view returns (uint256) {
+        return i_mintFee;
+    }
+
+    function getDogTokenUris(uint256 index) public view returns (string memory){
+        return s_dogTokenUris[index];
+    }
+
+    function getTokenCounter() public view returns (uint256) {
+        return s_tokenCounter;
+    }
+
+    // We dont need this function anymore bcos ERC721URIStorage.sol contract has a function
+    // called _setTokenURI() which will automatically set the tokenURI for us
+    // instead of doing it our self
+    // function tokenURI(uint256) public view override returns (string memory) {}
+}
+
+
+*/
+
+/*
+
+// 21:24:24 ---- Random IPFS NFT part VI
+
+/**
+ * @notice NFT Recap
+ * @dev Now we run yarn hardhat compile
+ * Compiled 5 Solidity files successfully
+ * Done in 15.39s.
+ */
+
+/**
+ * @title Random IPFS NFT
+ * @author Momodu Abdulbatin Jamiu
+ * @notice When we mint an NFT, we will trigger a chainlink VRF call to get us a random number
+ * using that number, we will get a random NFT
+ * Pug, Shiba Inu, St. Bernard
+ * Pug super rare
+ * Shiba Inu sort of common
+ * St. Bernard common
+ *
+ * users have to pay to mint an NFT
+ * the owner of the contract can wthdraw the ETH
+ */
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.7;
+
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+
+// import "@openzeppelin/contracts/token/ERC721/ERC721.sol"; we dont need this again
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+error RandomIpfsNft__RangeOutOfBounds();
+error RandomIpfsNft__NeedMoreETHSent();
+error RandomIpfsNft__TransferFailed();
+
+contract RandomIpfsNft is VRFConsumerBaseV2, ERC721URIStorage, Ownable {
+
+    // Type Declaration
+    enum Breed {
+        PUG,
+        SHIBA_INU,
+        ST_BERNARD
+    }
+
+    // Chainlink VRF Variables
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    uint64 private immutable i_subscriptionId;
+    bytes32 private immutable i_gasLane;
+    uint32 private immutable i_callbackGasLimit;
+    uint16 private constant REQUEST_CONFIRMATIONS = 3;
+    uint32 private constant NUM_WORDS = 1;
+
+    // VRF helpers
+    mapping(uint256 => address) public s_requestIdToSender;
+
+    // NFT Variable
+    uint256 public s_tokenCounter; // we created our tokenId
+    uint256 internal constant MAX_CHANCE_VALUE = 100; // a chance array of max value 100
+    string[] internal s_dogTokenUris; // we created a string array that will store different token uri of the dog breed
+
+    uint256 internal immutable i_mintFee; // a variable to store the mint fees
+
+    // Events
+    event NftRequested(uint256 indexed requestId, address requester);
+    event NftMinted(Breed dogBreed, address minter);
+
+    constructor(
+        address vrfCoordinatorV2,
+        uint64 subscriptionId,
+        bytes32 gasLane,
+        uint32 callbackGasLimit,
+        string[3] memory dogTokenUris,
+
+        uint256 mintFee
+    ) VRFConsumerBaseV2(vrfCoordinatorV2) ERC721("Random IPFT NFT", "RIN") {
+        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
+        i_subscriptionId = subscriptionId;
+        i_gasLane = gasLane;
+        i_callbackGasLimit = callbackGasLimit;
+        s_dogTokenUris = dogTokenUris; // we set the dog token uris
+
+        i_mintFee = mintFee; // we set the mint fee
+    }
+
+    // The function will be called when a user want to request for NFT and the user will pay for the mint
+    function requestNft() public payable returns (uint256 requestId) {
+        if (msg.value < i_mintFee) {
+            revert RandomIpfsNft__NeedMoreETHSent();
+        }
+        // Here we requested for the random NFT
+        requestId = i_vrfCoordinator.requestRandomWords(
+            i_gasLane,
+            i_subscriptionId,
+            REQUEST_CONFIRMATIONS,
+            i_callbackGasLimit,
+            NUM_WORDS
+        );
+        // Here we mapped the requestId to sender i.e who called the randomness
+        s_requestIdToSender[requestId] = msg.sender;
+
+        emit NftRequested(requestId, msg.sender);
+    }
+
+    // The function will be called to request for randomness
+    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+        // Now is not the chainlink node who will own the dog, is whoever request for it
+        address dogOwner = s_requestIdToSender[requestId]; // we have the dog owner
+        uint256 newTokenId = s_tokenCounter; // we have the tokenId
+
+        uint256 moddedRng = randomWords[0] % MAX_CHANCE_VALUE; // we will have numbers from 0 - 99
+        // 7 - Pug
+        // 12 - Shiba Inu
+        // 88 - St. Bernard
+        // 45 -> St. Bernard
+
+        Breed dogBreed = getBreedFromModdedRng(moddedRng);
+        _safeMint(dogOwner, newTokenId); // we mint our NFT
+
+        // we call _setTokenURI() from ERC721URIStorage.sol
+        // this is an example of token uri --> "ipfs://bafybeig37ioir76s7mg5oobetncojcm3c3hxasyd4rvid4jqhy4gkaheg4/?filename=0-PUG.json";
+        // so we would have different uri for diffrent dog breed
+        _setTokenURI(newTokenId, s_dogTokenUris[uint256(dogBreed)]); // we cast the dogBreed to uint256 to get its index
+    
+        emit NftMinted(dogBreed, dogOwner);
+    }
+
+    // This is a function to allow the user who mint the NFT to be able to withdraw the ETH
+    // we can create our modifier function
+    // but openzepplin comes with a contract called Ownable.sol that has a modifier
+    function withdraw() public onlyOwner{
+        uint256 amount = address(this).balance;
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        if (!success) {
+            revert RandomIpfsNft__TransferFailed();
+        }
+    }
+
+    // This function will get us the breed from the moddedRng
+    function getBreedFromModdedRng(uint256 moddedRng) public pure returns (Breed) {
+        uint256 cummulativeSum = 0;
+        uint256[3] memory chanceArray = getChanceArray();
+        /**
+         * @dev how the loop works is this 
+         * if moddedRng = 25, i.e Shiba Inu bcos is between [10, 30]
+         * and i = 0, chanceArray.length = 99, cummulativeSum = 0, chanceArray[i] = 10
+         * 25 >= 0 true && 25 < 0 + 10 not true
+         * Then this line of code next --> cummulativeSum += chanceArray[i];
+         * So --> cummulativeSum += chanceArray[i] will now be 10
+         * 
+         * Now let start the loop again
+         * if again moddedRng = 25, i.e Shiba Inu bcos is between [10, 30]
+         * i = 1, chanceArray.length = 99, cummulativeSum = 10, chanceArray[i] = 30
+         * 25 >= 10 true && 25 < 10 + 30 true
+         * then return Breed(i) = Shiba Inu Bingo!!!
+         * 
+         * and this line of code i.e cummulativeSum += chanceArray[i] dont need again
+         * 
+         *  Pug = 0 - 9  (10%)
+         *  Shiba-inu = 10 - 39  (30%)
+         *  St. Bernard = 40 = 99 (60%)
+         */
+        for (uint256 i = 0; i < chanceArray.length; i++) {
+            if (moddedRng >= cummulativeSum && moddedRng < cummulativeSum + chanceArray[i]) {
+                return Breed(i);
+            }
+            cummulativeSum += chanceArray[i];
+        }
+        // In case if its dosn't return anything or an error occured
+        revert RandomIpfsNft__RangeOutOfBounds();
+    }
+
+    /**
+     * @dev The chance array represent different rarety of different dogs
+     * so by making this array, we are saying that index 0 i.e 10 has 10% chance of happening
+     * index 1 has 20% chance of happeneing while index 2 has 60% chance of happening
+     * 10 + 30 - 100 
+     * 
+     * So we are saying that Pug will have 10%
+     * Shiba Inu will have 30% chance
+     * St. Bernard will have 60% chance
+     * 
+     */
+    function getChanceArray() public pure returns (uint256[3] memory) {
+        return [10, 30, MAX_CHANCE_VALUE];
+    }
+
+    function getMintFee() public view returns (uint256) {
+        return i_mintFee;
+    }
+
+    function getDogTokenUris(uint256 index) public view returns (string memory){
+        return s_dogTokenUris[index];
+    }
+
+    function getTokenCounter() public view returns (uint256) {
+        return s_tokenCounter;
+    }
+
+    // We dont need this function anymore bcos ERC721URIStorage.sol contract has a function
+    // called _setTokenURI() which will automatically set the tokenURI for us
+    // instead of doing it our self
+    // function tokenURI(uint256) public view override returns (string memory) {}
+}
+
+
+*/
+
+/*
+
+// 21:24:24 ---- Random IPFS NFT Without my comments
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.7;
+
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+error RandomIpfsNft__RangeOutOfBounds();
+error RandomIpfsNft__NeedMoreETHSent();
+error RandomIpfsNft__TransferFailed();
+
+contract RandomIpfsNft is VRFConsumerBaseV2, ERC721URIStorage, Ownable {
+    // Type Declaration
+    enum Breed {
+        PUG,
+        SHIBA_INU,
+        ST_BERNARD
+    }
+
+    // Chainlink VRF Variables
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    uint64 private immutable i_subscriptionId;
+    bytes32 private immutable i_gasLane;
+    uint32 private immutable i_callbackGasLimit;
+    uint16 private constant REQUEST_CONFIRMATIONS = 3;
+    uint32 private constant NUM_WORDS = 1;
+
+    // VRF helpers
+    mapping(uint256 => address) public s_requestIdToSender;
+
+    // NFT Variable
+    uint256 public s_tokenCounter;
+    uint256 internal constant MAX_CHANCE_VALUE = 100;
+    string[] internal s_dogTokenUris;
+    uint256 internal immutable i_mintFee;
+
+    // Events
+    event NftRequested(uint256 indexed requestId, address requester);
+    event NftMinted(Breed dogBreed, address minter);
+
+    constructor(
+        address vrfCoordinatorV2,
+        uint64 subscriptionId,
+        bytes32 gasLane,
+        uint32 callbackGasLimit,
+        string[3] memory dogTokenUris,
+        uint256 mintFee
+    ) VRFConsumerBaseV2(vrfCoordinatorV2) ERC721("Random IPFT NFT", "RIN") {
+        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
+        i_subscriptionId = subscriptionId;
+        i_gasLane = gasLane;
+        i_callbackGasLimit = callbackGasLimit;
+        s_dogTokenUris = dogTokenUris;
+        i_mintFee = mintFee;
+    }
+
+    function requestNft() public payable returns (uint256 requestId) {
+        if (msg.value < i_mintFee) {
+            revert RandomIpfsNft__NeedMoreETHSent();
+        }
+        requestId = i_vrfCoordinator.requestRandomWords(
+            i_gasLane,
+            i_subscriptionId,
+            REQUEST_CONFIRMATIONS,
+            i_callbackGasLimit,
+            NUM_WORDS
+        );
+        s_requestIdToSender[requestId] = msg.sender;
+        emit NftRequested(requestId, msg.sender);
+    }
+
+    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+        address dogOwner = s_requestIdToSender[requestId];
+        uint256 newTokenId = s_tokenCounter;
+        uint256 moddedRng = randomWords[0] % MAX_CHANCE_VALUE;
+        Breed dogBreed = getBreedFromModdedRng(moddedRng);
+        _safeMint(dogOwner, newTokenId);
+        _setTokenURI(newTokenId, s_dogTokenUris[uint256(dogBreed)]);
+
+        emit NftMinted(dogBreed, dogOwner);
+    }
+
+    function withdraw() public onlyOwner {
+        uint256 amount = address(this).balance;
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        if (!success) {
+            revert RandomIpfsNft__TransferFailed();
+        }
+    }
+
+    function getBreedFromModdedRng(uint256 moddedRng) public pure returns (Breed) {
+        uint256 cummulativeSum = 0;
+        uint256[3] memory chanceArray = getChanceArray();
+        for (uint256 i = 0; i < chanceArray.length; i++) {
+            if (moddedRng >= cummulativeSum && moddedRng < cummulativeSum + chanceArray[i]) {
+                return Breed(i);
+            }
+            cummulativeSum += chanceArray[i];
+        }
+        revert RandomIpfsNft__RangeOutOfBounds();
+    }
+
+    function getChanceArray() public pure returns (uint256[3] memory) {
+        return [10, 30, MAX_CHANCE_VALUE];
+    }
+
+    function getMintFee() public view returns (uint256) {
+        return i_mintFee;
+    }
+
+    function getDogTokenUris(uint256 index) public view returns (string memory) {
+        return s_dogTokenUris[index];
+    }
+
+    function getTokenCounter() public view returns (uint256) {
+        return s_tokenCounter;
+    }
+}
+
+
+*/
